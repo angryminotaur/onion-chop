@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Onion Chop</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050505;
+      --panel: #101010;
+      --screen: #f4f2e8;
+      --ink: #f7f7ef;
+      --paper-ink: #101010;
+      --muted: #8f8f86;
+      --line: #3d3d38;
+      --white: #f7f7ef;
+      --black: #101010;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--white);
+      background:
+        linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px),
+        radial-gradient(circle at 50% -10%, rgba(255, 255, 255, .12), transparent 42%),
+        linear-gradient(180deg, #171717, var(--bg));
+      background-size: 18px 18px, 18px 18px, auto, auto;
+      touch-action: manipulation;
+      overscroll-behavior: none;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 850;
+    }
+
+    button:disabled,
+    input:disabled {
+      cursor: not-allowed;
+      opacity: .62;
+    }
+
+    .app {
+      width: min(100%, 980px);
+      min-height: 100vh;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) 300px;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .game {
+      min-height: calc(100vh - 28px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pool {
+      min-width: 118px;
+      padding: 9px 11px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #0d0d0d;
+      text-align: right;
+    }
+
+    .pool span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .pool b {
+      display: block;
+      margin-top: 2px;
+      color: var(--white);
+      font-size: 25px;
+      line-height: 1;
+    }
+
+    .arena {
+      position: relative;
+      min-height: 430px;
+      display: grid;
+      overflow: hidden;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, .04), transparent 35%),
+        #080808;
+      box-shadow: inset 0 0 0 10px #111, 0 18px 60px rgba(0, 0, 0, .42);
+    }
+
+    .arena::before {
+      content: "";
+      position: absolute;
+      inset: 22px;
+      border: 2px solid var(--black);
+      border-radius: 6px;
+      background:
+        linear-gradient(rgba(0, 0, 0, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, .035) 1px, transparent 1px),
+        var(--screen);
+      background-size: 5px 5px;
+      z-index: 0;
+    }
+
+    .hud {
+      position: absolute;
+      inset: 12px 12px auto;
+      z-index: 4;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .stat {
+      min-width: 0;
+      padding: 8px;
+      border-radius: 8px;
+      border: 2px solid var(--black);
+      background: rgba(244, 242, 232, .9);
+      color: var(--paper-ink);
+    }
+
+    .stat span {
+      display: block;
+      color: #5d5d55;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .stat b {
+      display: block;
+      margin-top: 2px;
+      font-size: 22px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .playfield {
+      position: relative;
+      width: min(78vw, 380px);
+      aspect-ratio: 1 / 1.15;
+      align-self: center;
+      justify-self: center;
+      margin-top: 44px;
+      display: grid;
+      place-items: center;
+      z-index: 2;
+    }
+
+    .target-zone {
+      position: absolute;
+      top: 10%;
+      bottom: 8%;
+      left: calc(50% - 28px);
+      width: 56px;
+      border-left: 3px solid var(--black);
+      border-right: 3px solid var(--black);
+      background: repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(0, 0, 0, .13) 5px, rgba(0, 0, 0, .13) 8px);
+      z-index: 1;
+    }
+
+    .target-zone::after {
+      content: "";
+      position: absolute;
+      inset: 0 19px;
+      background: rgba(0, 0, 0, .22);
+    }
+
+    .onion {
+      width: 96%;
+      height: 96%;
+      object-fit: contain;
+      filter: grayscale(1) brightness(1.1) contrast(4.5);
+      opacity: .9;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .knife,
+    .slice {
+      position: absolute;
+      top: 8%;
+      bottom: 7%;
+      transform: translateX(-50%);
+    }
+
+    .knife {
+      width: 5px;
+      border-radius: 999px;
+      background: var(--black);
+      box-shadow: none;
+      z-index: 3;
+    }
+
+    .slice {
+      width: 3px;
+      z-index: 2;
+      opacity: .82;
+    }
+
+    .message {
+      position: absolute;
+      inset: auto 12px 12px;
+      min-height: 50px;
+      display: grid;
+      place-items: center;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--screen);
+      color: #5a5a52;
+      text-align: center;
+      font-size: 14px;
+      z-index: 4;
+    }
+
+    .burst {
+      position: absolute;
+      left: 50%;
+      top: 47%;
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 5;
+      font-size: 42px;
+      font-weight: 950;
+      color: var(--white);
+      background: var(--black);
+      padding: 2px 10px;
+      text-shadow: none;
+      white-space: nowrap;
+    }
+
+    .burst.show {
+      animation: pop .46s ease-out;
+    }
+
+    @keyframes pop {
+      0% { opacity: 0; transform: translate(-50%, -34%) scale(.82); }
+      22% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+      100% { opacity: 0; transform: translate(-50%, -72%) scale(.98); }
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 7;
+      padding: 18px;
+      background:
+        linear-gradient(rgba(0, 0, 0, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, .035) 1px, transparent 1px),
+        rgba(244, 242, 232, .985);
+      background-size: 5px 5px;
+      color: var(--paper-ink);
+    }
+
+    .overlay[hidden] {
+      display: none;
+    }
+
+    .start {
+      width: min(100%, 340px);
+      display: grid;
+      gap: 10px;
+      text-align: center;
+    }
+
+    .start h2 {
+      margin: 0;
+      font-size: 40px;
+      line-height: .92;
+      letter-spacing: 0;
+    }
+
+    .start p {
+      margin: 0;
+      color: #5d5d55;
+      font-size: 14px;
+    }
+
+    .entry {
+      display: grid;
+      grid-template-columns: 1fr 104px;
+      gap: 8px;
+    }
+
+    .entry input {
+      min-width: 0;
+      height: 48px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--paper-ink);
+      background: var(--screen);
+      font-weight: 750;
+    }
+
+    .start button,
+    .start a,
+    .chop {
+      color: var(--black);
+      background: var(--white);
+      box-shadow: 0 6px 0 #676761;
+      border: 2px solid var(--black);
+      text-decoration: none;
+    }
+
+    .start button,
+    .start a {
+      height: 48px;
+    }
+
+    .approval-link,
+    .clear-entry {
+      height: 36px;
+      display: grid;
+      place-items: center;
+      color: var(--paper-ink);
+      background: transparent;
+      border: 1px solid rgba(0, 0, 0, .35);
+      box-shadow: none;
+      font-weight: 850;
+    }
+
+    .approval-link[hidden],
+    .clear-entry[hidden] {
+      display: none;
+    }
+
+    .overlay .leader-row {
+      color: #4f4f49;
+      border-bottom-color: rgba(0, 0, 0, .14);
+    }
+
+    .overlay .leader-row b {
+      color: var(--paper-ink);
+    }
+
+    .chop {
+      height: 78px;
+      font-size: 30px;
+    }
+
+    .chop:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #676761;
+    }
+
+    .side {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      padding-top: 1px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #101010;
+      padding: 12px;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .rows {
+      display: grid;
+      gap: 7px;
+    }
+
+    .row,
+    .leader-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .row b,
+    .leader-row b {
+      color: var(--white);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .leader-row {
+      grid-template-columns: 28px 1fr auto;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+    }
+
+    .leader-row:last-child {
+      border-bottom: 0;
+    }
+
+    .pill {
+      display: inline-grid;
+      place-items: center;
+      min-width: 25px;
+      height: 25px;
+      border-radius: 999px;
+      color: var(--black);
+      background: var(--white);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .fine {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .settle {
+      width: 100%;
+      height: 42px;
+      margin-top: 10px;
+      color: var(--black);
+      background: var(--white);
+      border: 2px solid var(--black);
+      box-shadow: 0 4px 0 #676761;
+    }
+
+    .settle:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #676761;
+    }
+
+    @media (max-width: 820px) {
+      .app {
+        grid-template-columns: 1fr;
+        padding: 10px;
+      }
+
+      .game {
+        min-height: calc(100vh - 20px);
+      }
+
+      .side {
+        padding-bottom: 12px;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .arena {
+        min-height: 410px;
+      }
+
+      h1 {
+        font-size: 25px;
+      }
+
+      .playfield {
+        width: min(86vw, 340px);
+      }
+
+      .chop {
+        height: 74px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="game">
+      <header class="topbar">
+        <div>
+          <h1>Onion Chop</h1>
+          <div class="tag">Badge arcade mode. 20 chops. Clean timing.</div>
+        </div>
+        <div class="pool" hidden>
+          <span>Escrow Pool</span>
+          <b id="pool">184</b>
+        </div>
+      </header>
+
+      <section class="arena" aria-label="Onion Chop game">
+        <div class="hud">
+          <div class="stat"><span>Score</span><b id="score">0</b></div>
+          <div class="stat"><span>Chops</span><b id="chops">20</b></div>
+          <div class="stat"><span>Combo</span><b id="combo">x1</b></div>
+        </div>
+
+        <div class="playfield" id="playfield">
+          <div class="target-zone"></div>
+          <img class="onion" src="onion-crop.png" alt="onion">
+          <div class="knife" id="knife"></div>
+        </div>
+
+        <div class="burst" id="burst">CHOP</div>
+        <div class="message" id="message">Enter onions to start.</div>
+
+        <div class="overlay" id="overlay">
+          <div class="start">
+            <h2>Onion Chop</h2>
+            <p>Insert onions. Slice clean. Climb the board.</p>
+            <div class="entry">
+              <input id="playerName" maxlength="64" placeholder="Type username here" aria-label="Player name">
+              <button id="play">Enter 5</button>
+            </div>
+            <a class="approval-link" id="approvalLink" href="https://oniondao.dev/portal/onions" target="_blank" rel="noreferrer" hidden>Open Approval Queue</a>
+            <button class="clear-entry" id="clearEntry" hidden>Clear Pending</button>
+            <div id="miniBoard"></div>
+          </div>
+        </div>
+      </section>
+
+      <button class="chop" id="chop">CHOP</button>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <h2>Tournament</h2>
+        <div class="rows">
+          <div class="row">Entry <b id="entryReadout">5 onions</b></div>
+          <div class="row" hidden>Escrowed pool <b id="escrowReadout">184 onions</b></div>
+          <div class="row">Players <b id="playersReadout">3</b></div>
+          <div class="row">Your best <b id="bestReadout">0</b></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Payouts</h2>
+        <div class="rows">
+          <div class="row">1st <b id="firstPayout">0 onions</b></div>
+          <div class="row">2nd <b id="secondPayout">0 onions</b></div>
+          <div class="row">3rd <b id="thirdPayout">0 onions</b></div>
+          <div class="row" hidden>House <b id="housePayout">0 onions</b></div>
+          <div class="row" hidden>Vault <b id="houseVault">Caleb Martin</b></div>
+        </div>
+        <button class="settle" id="settle">Settle Payouts</button>
+        <p class="fine" id="settlementStatus">Ready to settle after the round.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Leaderboard</h2>
+        <div id="leaderboard"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Timing</h2>
+        <div class="rows">
+          <div class="row">Refresh <b id="fps">0 FPS</b></div>
+          <div class="row">Sweep <b>1050 ms</b></div>
+          <div class="row">Perfect <b>37 ms</b></div>
+          <div class="row">Good <b>100 ms</b></div>
+        </div>
+        <p class="fine">The score uses the exact button timestamp, not the last rendered frame.</p>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    const MAX_CHOPS = 20;
+    const ENTRY_ONIONS = 5;
+    const HOUSE_USERNAME = "Caleb Martin";
+    const PERIOD_MS = 1050;
+    const TARGET_CENTER = 0.5;
+    const PERFECT = 0.035;
+    const GOOD = 0.095;
+    const POLL_MS = 2000;
+
+    const els = {
+      pool: document.querySelector("#pool"),
+      score: document.querySelector("#score"),
+      chops: document.querySelector("#chops"),
+      combo: document.querySelector("#combo"),
+      knife: document.querySelector("#knife"),
+      playfield: document.querySelector("#playfield"),
+      burst: document.querySelector("#burst"),
+      message: document.querySelector("#message"),
+      overlay: document.querySelector("#overlay"),
+      play: document.querySelector("#play"),
+      approvalLink: document.querySelector("#approvalLink"),
+      clearEntry: document.querySelector("#clearEntry"),
+      chop: document.querySelector("#chop"),
+      playerName: document.querySelector("#playerName"),
+      leaderboard: document.querySelector("#leaderboard"),
+      miniBoard: document.querySelector("#miniBoard"),
+      entryReadout: document.querySelector("#entryReadout"),
+      escrowReadout: document.querySelector("#escrowReadout"),
+      playersReadout: document.querySelector("#playersReadout"),
+      bestReadout: document.querySelector("#bestReadout"),
+      firstPayout: document.querySelector("#firstPayout"),
+      secondPayout: document.querySelector("#secondPayout"),
+      thirdPayout: document.querySelector("#thirdPayout"),
+      housePayout: document.querySelector("#housePayout"),
+      houseVault: document.querySelector("#houseVault"),
+      settle: document.querySelector("#settle"),
+      settlementStatus: document.querySelector("#settlementStatus"),
+      fps: document.querySelector("#fps"),
+    };
+
+    const stored = JSON.parse(localStorage.getItem("onionChopState") || "null");
+    const state = stored || {
+      pool: 184,
+      houseVault: 0,
+      lastSettlement: null,
+      payIns: [],
+      best: 0,
+      leaderboard: [
+        { name: "MIRA", score: 9210 },
+        { name: "KAI", score: 7840 },
+        { name: "JAX", score: 6690 },
+      ],
+    };
+    let activeEntry = JSON.parse(localStorage.getItem("onionChopActiveEntry") || "null");
+    let entryBusy = false;
+    let serverOnline = false;
+
+    Object.assign(state, {
+      running: false,
+      startTime: 0,
+      score: 0,
+      combo: 0,
+      chopsUsed: 0,
+      slices: [],
+      frameBucket: [],
+      lastFrame: 0,
+    });
+
+    function save() {
+      const persisted = {
+        pool: state.pool,
+        houseVault: state.houseVault,
+        lastSettlement: state.lastSettlement,
+        payIns: (state.payIns || []).slice(-40),
+        best: state.best,
+        leaderboard: state.leaderboard.slice(0, 12),
+      };
+      localStorage.setItem("onionChopState", JSON.stringify(persisted));
+    }
+
+    function knifePosition(now) {
+      const elapsed = now - state.startTime;
+      const phase = (elapsed % PERIOD_MS) / PERIOD_MS;
+      return phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+    }
+
+    function comboMultiplier() {
+      if (state.combo >= 18) return 5;
+      if (state.combo >= 12) return 4;
+      if (state.combo >= 7) return 3;
+      if (state.combo >= 3) return 2;
+      return 1;
+    }
+
+    function plural(count) {
+      return count === 1 ? "onion" : "onions";
+    }
+
+    function cleanName() {
+      const name = els.playerName.value.replace(/[^a-zA-Z0-9_ .@-]/g, "").slice(0, 64);
+      return name;
+    }
+
+    function setMessage(text, color = "var(--muted)") {
+      els.message.textContent = text;
+      els.message.style.color = color;
+    }
+
+    function storeActiveEntry(entry) {
+      activeEntry = entry;
+      if (entry && entry.status !== "completed") {
+        localStorage.setItem("onionChopActiveEntry", JSON.stringify(entry));
+      } else {
+        localStorage.removeItem("onionChopActiveEntry");
+      }
+    }
+
+    function clearActiveEntry() {
+      activeEntry = null;
+      localStorage.removeItem("onionChopActiveEntry");
+    }
+
+    function pendingEntryMessage(entry) {
+      const requestId = entry?.onionRequestId ? ` ${entry.onionRequestId.slice(0, 8)}` : "";
+      if (entry?.onionStatus === "awaiting_badge_signature") {
+        return `Waiting for badge signature${requestId}. Reset if nothing appears.`;
+      }
+      return `Pending request${requestId}. Open Approval Queue.`;
+    }
+
+    function updateEntryControls() {
+      if (state.running) return;
+      const hasPending = activeEntry && !["approved", "completed"].includes(activeEntry.status);
+      els.playerName.disabled = entryBusy || hasPending;
+      els.play.disabled = entryBusy;
+      els.chop.disabled = entryBusy || hasPending;
+      els.clearEntry.hidden = !hasPending || entryBusy;
+      els.approvalLink.hidden = !hasPending;
+      if (hasPending) {
+        els.approvalLink.href = activeEntry.approvalUrl || "https://oniondao.dev/portal/onions";
+      }
+      if (entryBusy) {
+        els.play.textContent = "Waiting";
+      } else if (hasPending) {
+        els.play.textContent = "Check Entry";
+      } else {
+        els.play.textContent = "Enter 5";
+      }
+    }
+
+    function showBurst(text, color) {
+      els.burst.textContent = text;
+      els.burst.style.color = color;
+      els.burst.classList.remove("show");
+      void els.burst.offsetWidth;
+      els.burst.classList.add("show");
+    }
+
+    function rows() {
+      return [...state.leaderboard].sort((a, b) => b.score - a.score).slice(0, 8);
+    }
+
+    function payoutPreview(pool = state.pool) {
+      const first = Math.floor(pool * 0.6);
+      const second = Math.floor(pool * 0.2);
+      const third = Math.floor(pool * 0.1);
+      const house = Math.max(0, pool - first - second - third);
+      return { first, second, third, house };
+    }
+
+    function payoutText(amount) {
+      return `${amount} ${plural(amount)}`;
+    }
+
+    function settlementLine(settlement) {
+      if (!settlement) return "Ready to settle after the round.";
+      const names = settlement.payouts
+        .filter((payout) => payout.recipient !== HOUSE_USERNAME && payout.recipient !== "UNCLAIMED")
+        .map((payout) => `${payout.recipient} ${payout.amount}`)
+        .join(" / ");
+      return names ? `Last settled: ${names}` : "Last pool sent to house vault.";
+    }
+
+    function transferRequest(username, recipientUsername, amount, note, externalId) {
+      return {
+        type: "transfer",
+        username,
+        recipientUsername,
+        amount,
+        requester: "onion-chop",
+        externalId,
+        note,
+      };
+    }
+
+    function delay(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function apiJson(path, options = {}) {
+      const response = await fetch(path, {
+        headers: { "Content-Type": "application/json" },
+        ...options,
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        const error = new Error(payload.error || "request_failed");
+        error.payload = payload;
+        error.status = response.status;
+        throw error;
+      }
+      return payload;
+    }
+
+    function applyTournament(tournament) {
+      if (!tournament) return;
+      serverOnline = true;
+      state.pool = tournament.pool;
+      state.houseVault = tournament.houseVault || 0;
+      state.lastSettlement = tournament.lastSettlement || state.lastSettlement;
+      state.leaderboard = tournament.leaderboard.length ? tournament.leaderboard : state.leaderboard;
+      updateLeaderboard();
+      updateHud();
+    }
+
+    async function syncTournament() {
+      try {
+        const payload = await apiJson("/api/tournament");
+        applyTournament(payload);
+      } catch (error) {
+        serverOnline = false;
+        updateHud();
+      }
+    }
+
+    function updateLeaderboard() {
+      const list = rows();
+      els.leaderboard.innerHTML = list.map((row, index) => `
+        <div class="leader-row">
+          <span class="pill">${index + 1}</span>
+          <b>${row.name}</b>
+          <b>${row.score}</b>
+        </div>
+      `).join("");
+      els.miniBoard.innerHTML = list.slice(0, 4).map((row, index) => `
+        <div class="leader-row">
+          <span class="pill">${index + 1}</span>
+          <b>${row.name}</b>
+          <b>${row.score}</b>
+        </div>
+      `).join("");
+    }
+
+    function updateHud() {
+      els.pool.textContent = state.pool.toString();
+      els.score.textContent = state.score.toString();
+      els.chops.textContent = Math.max(0, MAX_CHOPS - state.chopsUsed).toString();
+      els.combo.textContent = `x${comboMultiplier()}`;
+      els.entryReadout.textContent = `${ENTRY_ONIONS} ${plural(ENTRY_ONIONS)}`;
+      els.escrowReadout.textContent = `${state.pool} ${plural(state.pool)}`;
+      els.playersReadout.textContent = state.leaderboard.length.toString();
+      els.bestReadout.textContent = state.best.toString();
+      const payouts = payoutPreview();
+      els.firstPayout.textContent = payoutText(payouts.first);
+      els.secondPayout.textContent = payoutText(payouts.second);
+      els.thirdPayout.textContent = payoutText(payouts.third);
+      els.housePayout.textContent = payoutText(payouts.house);
+      els.houseVault.textContent = HOUSE_USERNAME;
+      els.settle.disabled = state.running || state.pool <= 0;
+      els.settlementStatus.textContent = state.running
+        ? "Finish the run before settling."
+        : serverOnline
+          ? settlementLine(state.lastSettlement)
+          : `${settlementLine(state.lastSettlement)} Local mode.`;
+      updateEntryControls();
+    }
+
+    function addSlice(pos, color) {
+      const slice = document.createElement("div");
+      slice.className = "slice";
+      slice.style.left = `${pos * 100}%`;
+      slice.style.background = color;
+      els.playfield.append(slice);
+      state.slices.push(slice);
+      if (state.slices.length > 16) {
+        const old = state.slices.shift();
+        old.remove();
+      }
+    }
+
+    function beginRun() {
+      state.running = true;
+      state.startTime = performance.now();
+      state.score = 0;
+      state.combo = 0;
+      state.chopsUsed = 0;
+      state.slices = [];
+      els.playfield.querySelectorAll(".slice").forEach((slice) => slice.remove());
+      els.overlay.hidden = true;
+      setMessage("20 chops. Hit the center.");
+      updateHud();
+      save();
+    }
+
+    function beginLocalRun() {
+      state.pool += ENTRY_ONIONS;
+      const name = cleanName();
+      state.payIns = state.payIns || [];
+      state.payIns.push(transferRequest(
+        name,
+        HOUSE_USERNAME,
+        ENTRY_ONIONS,
+        "Onion Chop entry",
+        `entry_${Date.now()}_${name}`
+      ));
+      beginRun();
+    }
+
+    async function waitForPaidEntry(entry) {
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        const payload = await apiJson(`/api/entry/${entry.id}`);
+        storeActiveEntry(payload.entry);
+        if (activeEntry.status in { approved: 1, completed: 1 } && activeEntry.runToken) {
+          return activeEntry;
+        }
+        if (activeEntry.status === "denied" || activeEntry.status === "failed") {
+          clearActiveEntry();
+          throw new Error(activeEntry.status);
+        }
+        setMessage(pendingEntryMessage(activeEntry));
+        updateEntryControls();
+        await delay(POLL_MS);
+      }
+      throw new Error("payment_timeout");
+    }
+
+    async function startRound() {
+      if (state.running || entryBusy) return;
+      entryBusy = true;
+      updateEntryControls();
+      try {
+        if (!activeEntry || activeEntry.status === "completed") {
+          setMessage("Creating 5 onion entry...");
+          const payload = await apiJson("/api/enter", {
+            method: "POST",
+            body: JSON.stringify({ username: cleanName() }),
+          });
+          applyTournament(payload.tournament);
+          storeActiveEntry(payload.entry);
+        } else {
+          setMessage(pendingEntryMessage(activeEntry));
+        }
+        if (!["approved", "completed"].includes(activeEntry.status)) {
+          activeEntry = await waitForPaidEntry(activeEntry);
+          await syncTournament();
+        }
+        storeActiveEntry(activeEntry);
+        beginRun();
+      } catch (error) {
+        if (!serverOnline) {
+          beginLocalRun();
+        } else {
+          const detail = error.payload?.detail || error.message;
+          setMessage(error.message === "payment_timeout" ? "Entry timed out." : detail);
+        }
+      } finally {
+        entryBusy = false;
+        updateEntryControls();
+      }
+    }
+
+    async function finishRound() {
+      state.running = false;
+      const name = cleanName();
+      state.best = Math.max(state.best, state.score);
+      updateHud();
+      save();
+      els.overlay.hidden = false;
+      els.play.textContent = "Play Again";
+      setMessage(`Final ${state.score}`, "var(--black)");
+      if (activeEntry?.runToken) {
+        try {
+          const payload = await apiJson("/api/score", {
+            method: "POST",
+            body: JSON.stringify({
+              entryId: activeEntry.id,
+              runToken: activeEntry.runToken,
+              score: state.score,
+              chopsUsed: state.chopsUsed,
+            }),
+          });
+          applyTournament(payload.tournament);
+          clearActiveEntry();
+        } catch (error) {
+          setMessage("Score saved locally. Server rejected it.", "var(--black)");
+        }
+      } else {
+        state.leaderboard.push({ name, score: state.score });
+        state.leaderboard = rows().slice(0, 12);
+        updateLeaderboard();
+        updateHud();
+        save();
+      }
+    }
+
+    async function settlePayouts() {
+      if (state.running || state.pool <= 0) return;
+      if (serverOnline) {
+        try {
+          let adminPin = localStorage.getItem("onionChopAdminPin") || "";
+          let payload;
+          try {
+            payload = await apiJson("/api/admin/settle", {
+              method: "POST",
+              body: JSON.stringify({ adminPin }),
+            });
+          } catch (error) {
+            if (error.status !== 401) throw error;
+            adminPin = window.prompt("Admin PIN") || "";
+            localStorage.setItem("onionChopAdminPin", adminPin);
+            payload = await apiJson("/api/admin/settle", {
+              method: "POST",
+              body: JSON.stringify({ adminPin }),
+            });
+          }
+          applyTournament(payload.tournament);
+          setMessage(`Pool settled: ${payload.settlement.pool} onions`, "var(--black)");
+          return;
+        } catch (error) {
+          setMessage(error.message === "not_enough_scored_players"
+            ? "Need 3 scored players to settle."
+            : "Settlement needs the server.", "var(--black)");
+          return;
+        }
+      }
+      const winners = rows();
+      const payouts = payoutPreview();
+      const settlement = {
+        pool: state.pool,
+        createdAt: new Date().toISOString(),
+        payouts: [
+          { place: "1st", recipient: winners[0]?.name || "UNCLAIMED", amount: payouts.first },
+          { place: "2nd", recipient: winners[1]?.name || "UNCLAIMED", amount: payouts.second },
+          { place: "3rd", recipient: winners[2]?.name || "UNCLAIMED", amount: payouts.third },
+          { place: "House", recipient: HOUSE_USERNAME, amount: payouts.house },
+        ],
+      };
+      settlement.transferRequests = settlement.payouts
+        .filter((payout) => payout.recipient !== "UNCLAIMED" && payout.recipient !== HOUSE_USERNAME && payout.amount > 0)
+        .map((payout) => transferRequest(
+          HOUSE_USERNAME,
+          payout.recipient,
+          payout.amount,
+          `Onion Chop ${payout.place} payout`,
+          `payout_${settlement.createdAt}_${payout.place}_${payout.recipient}`
+        ));
+
+      state.houseVault += payouts.house;
+      state.pool = 0;
+      state.lastSettlement = settlement;
+      save();
+      updateHud();
+      setMessage(`Pool settled: ${settlement.pool} onions`, "var(--black)");
+    }
+
+    function chop() {
+      if (!state.running) {
+        startRound();
+        return;
+      }
+      if (state.chopsUsed >= MAX_CHOPS) return;
+
+      const now = performance.now();
+      const pos = knifePosition(now);
+      const distance = Math.abs(pos - TARGET_CENTER);
+
+      let base = 5;
+      let label = "MISS";
+      let color = "var(--black)";
+
+      if (distance <= PERFECT) {
+        state.combo += 1;
+        base = 120;
+        label = "PERFECT";
+        color = "var(--black)";
+      } else if (distance <= GOOD) {
+        state.combo += 1;
+        base = 55;
+        label = "GOOD";
+        color = "var(--black)";
+      } else {
+        state.combo = 0;
+      }
+
+      const gained = base * comboMultiplier();
+      state.chopsUsed += 1;
+      state.score += gained;
+      addSlice(pos, color);
+      showBurst(label, color);
+      const left = MAX_CHOPS - state.chopsUsed;
+      setMessage(`${label} +${gained}  ${left} left`, color);
+      updateHud();
+
+      if (state.chopsUsed >= MAX_CHOPS) {
+        finishRound();
+      }
+    }
+
+    function render(now) {
+      if (state.lastFrame) state.frameBucket.push(now - state.lastFrame);
+      state.lastFrame = now;
+      if (state.frameBucket.length >= 24) {
+        const frames = state.frameBucket.splice(0);
+        const avg = frames.reduce((sum, frame) => sum + frame, 0) / frames.length;
+        els.fps.textContent = `${(1000 / avg).toFixed(0)} FPS`;
+      }
+      const pos = state.running ? knifePosition(now) : TARGET_CENTER;
+      els.knife.style.left = `${pos * 100}%`;
+      requestAnimationFrame(render);
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.code === "Space" || event.code === "Enter") {
+        event.preventDefault();
+        chop();
+      }
+    });
+
+    els.play.addEventListener("click", startRound);
+    els.clearEntry.addEventListener("click", async () => {
+      const staleEntry = activeEntry;
+      if (staleEntry?.id && serverOnline) {
+        try {
+          await apiJson(`/api/entry/${staleEntry.id}/abandon`, { method: "POST", body: "{}" });
+        } catch (error) {
+          setMessage("Could not reset pending request.");
+          return;
+        }
+      }
+      clearActiveEntry();
+      els.playerName.disabled = false;
+      els.chop.disabled = false;
+      els.play.textContent = "Enter 5";
+      els.clearEntry.hidden = true;
+      els.approvalLink.hidden = true;
+      setMessage("Pending reset. Enter again to send a new request.");
+      updateEntryControls();
+    });
+    els.chop.addEventListener("click", chop);
+    els.settle.addEventListener("click", settlePayouts);
+    els.playerName.addEventListener("input", () => {
+      els.playerName.value = cleanName();
+    });
+
+    updateLeaderboard();
+    updateHud();
+    if (activeEntry && !["approved", "completed"].includes(activeEntry.status)) {
+      if (activeEntry.username) els.playerName.value = activeEntry.username;
+      setMessage(pendingEntryMessage(activeEntry));
+      updateEntryControls();
+    } else if (activeEntry?.status === "approved") {
+      if (activeEntry.username) els.playerName.value = activeEntry.username;
+      setMessage("Approved — click Play to start.");
+    }
+    syncTournament();
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
