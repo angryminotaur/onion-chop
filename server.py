@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
 import argparse
+import datetime
 import hashlib
 import hmac
 import json
 import os
 import secrets
 import ssl
+import threading
 import time
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
+CENTRAL = ZoneInfo("America/Chicago")
 
 
 ROOT = Path(__file__).resolve().parent
@@ -469,14 +478,35 @@ class OnionChopHandler(SimpleHTTPRequestHandler):
         json_response(self, {"ok": True})
 
 
+def auto_settle_loop():
+    last_settled_date = None
+    while True:
+        now = datetime.datetime.now(CENTRAL)
+        today = now.date()
+        if now.hour == 23 and now.minute == 50 and last_settled_date != today:
+            last_settled_date = today
+            try:
+                state = load_state()
+                settle_tournament(state)
+                print(f"[onion-chop] Auto-settled at {now.isoformat()}")
+            except ValueError as exc:
+                print(f"[onion-chop] Auto-settle skipped: {exc}")
+            except Exception as exc:
+                print(f"[onion-chop] Auto-settle error: {exc}")
+        time.sleep(30)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Onion Chop webapp and escrow server")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
+    t = threading.Thread(target=auto_settle_loop, daemon=True)
+    t.start()
     server = ThreadingHTTPServer((args.host, args.port), OnionChopHandler)
     mode = "real Onion API" if API_KEY else "demo local onions"
     print(f"Onion Chop running at http://{args.host}:{args.port}/ ({mode})")
+    print(f"Auto-settle scheduled daily at 11:50 PM CT")
     server.serve_forever()
 
 
