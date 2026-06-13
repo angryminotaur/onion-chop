@@ -24,7 +24,8 @@ CENTRAL = ZoneInfo("America/Chicago")
 
 
 ROOT = Path(__file__).resolve().parent
-DATA_FILE = ROOT / "tournament-state.json"
+_data_dir = Path(os.environ.get("ONION_CHOP_DATA_DIR", "")).resolve() if os.environ.get("ONION_CHOP_DATA_DIR") else ROOT
+DATA_FILE = _data_dir / "tournament-state.json"
 
 ENTRY_ONIONS = int(os.environ.get("ONION_CHOP_ENTRY", "5"))
 HOUSE_USERNAME = os.environ.get("ONION_CHOP_HOUSE_USERNAME", "Caleb Martin")
